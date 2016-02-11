@@ -7,24 +7,55 @@
 //
 
 import UIKit
+protocol FaceViewDataSource : class {
+    func smileinessForFaceView(sender: smileView) -> Double? // dataSouce can return nil as we do not know yet
+}
+@IBDesignable
 
 class smileView: UIView {
-
+    @IBInspectable
     var lineWidth : CGFloat = 3 {didSet{setNeedsDisplay()}}
+    @IBInspectable
     var color : UIColor = UIColor.blueColor() {didSet{setNeedsDisplay()}}
+    @IBInspectable
     var scale : CGFloat = 0.7 {didSet{setNeedsDisplay()}}
     
-        var faceCenter: CGPoint {
-            return convertPoint(center, fromView: superview)
+    var faceCenter: CGPoint {
+        return convertPoint(center, fromView: superview)
+    }
+    
+    var faceRadius: CGFloat {
+        return min(bounds.size.width, bounds.size.height) / 2 * scale
+    }
+    
+    weak var dataSource : FaceViewDataSource?
+    
+    func scale(gesture: UIPinchGestureRecognizer){
+        if gesture.state == .Changed{
+            scale*=gesture.scale
+            gesture.scale = 1
         }
+    }
+    override func drawRect(rect: CGRect) {
         
-        var faceRadius: CGFloat {
-            return min(bounds.size.width, bounds.size.height) / 2 * scale
-        }
+        let facePath = UIBezierPath(arcCenter: faceCenter, radius: faceRadius, startAngle: 0, endAngle: CGFloat(2*M_PI), clockwise: true)
+        facePath.lineWidth =  lineWidth
+        color.set()
+        facePath.stroke()
+        bezierPathForEye(.Left).stroke()
+        bezierPathForEye(.Right).stroke()
+        
+        let smiliness = dataSource?.smileinessForFaceView(self) ?? 0.0 //?
+        let smilePath = bezierPathForSmile(smiliness)
+        smilePath.stroke()
+    }
+    
+    
     private struct Scaling {
         static let FaceRadiusToEyeRadiusRatio: CGFloat = 10
         static let FaceRadiusToEyeOffsetRatio: CGFloat = 3
         static let FaceRadiusToEyeSeparationRatio: CGFloat = 1.5
+        
         static let FaceRadiusToMouthWidthRatio: CGFloat = 1
         static let FaceRadiusToMouthHeightRatio: CGFloat = 3
         static let FaceRadiusToMouthOffsetRatio: CGFloat = 3
@@ -59,8 +90,9 @@ class smileView: UIView {
         
         let smileHeight = CGFloat(max(min(fractionOfMaxSmile, 1), -1)) * mouthHeight
         
-        let start = CGPoint(x: faceCenter.x - mouthWidth / 2, y: faceCenter.y + smileHeight)
+        let start = CGPoint(x: faceCenter.x - mouthWidth / 2, y: faceCenter.y + mouthVerticalOffset)
         let end = CGPoint(x: start.x + mouthWidth, y: start.y)
+        
         let cp1 = CGPoint(x: start.x + mouthWidth/3, y: start.y + smileHeight)
         let cp2 = CGPoint(x: end.x - mouthWidth / 3, y: cp1.y)
         
@@ -70,21 +102,6 @@ class smileView: UIView {
         path.lineWidth = lineWidth
         return path
     }
-    
-    override func drawRect(rect: CGRect) {
-   
-    let facePath = UIBezierPath(arcCenter: faceCenter, radius: faceRadius, startAngle: 0, endAngle: CGFloat(2*M_PI), clockwise: true)
-        facePath.lineWidth =  lineWidth
-        color.set()
-        facePath.stroke()
-        bezierPathForEye(.Left).stroke()
-        bezierPathForEye(.Right).stroke()
-        
-        let smiliness = 0.75
-        let smilePath = bezierPathForSmile(smiliness)
-        smilePath.stroke()
-        
-    
-    }
+
 
 }
